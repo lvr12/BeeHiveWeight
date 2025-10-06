@@ -102,14 +102,32 @@ async function synchroniserESP() {
 // ==========================
 // Drag & Drop
 // ==========================
-function startDrag(e, espId) {
+function startDrag(e, espId, nomDossier) {
     e.dataTransfer.setData("text/plain", espId);
+    e.dataTransfer.setData("dossier-source", nomDossier);
 }
 
-function dropESP(e, nomDossier) {
-    e.preventDefault();
+
+function dropESP(e, nomDossierCible) {
+    e.preventDefault(); // ⚡ obligatoire
+
     const espId = e.dataTransfer.getData("text/plain");
-    ajouterDossierAvecESP(nomDossier, [espId]);
+    const dossierSource = e.dataTransfer.getData("dossier-source");
+
+    if (!espId || !dossierSource) return;
+
+    if (dossierSource === nomDossierCible) return; // ne rien faire si même dossier
+
+    // Supprimer de l'ancien dossier
+    let espSourceList = JSON.parse(localStorage.getItem("dossier_" + dossierSource) || "[]");
+    espSourceList = espSourceList.filter(id => id !== espId);
+    localStorage.setItem("dossier_" + dossierSource, JSON.stringify(espSourceList));
+
+    // Ajouter au dossier cible
+    ajouterDossierAvecESP(nomDossierCible, [espId]);
+
+    // Mettre à jour l'affichage
+    afficherTousLesDossiers();
 }
 
 // ==========================

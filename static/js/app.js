@@ -1504,27 +1504,32 @@ function allowDrop(ev) {
 
 let draggedESP = null;
 
-function startDrag(e, espId) {
-    draggedESP = espId;
+function startDrag(e, espId, dossierSource) {
+    e.dataTransfer.setData("text/plain", espId);
+    e.dataTransfer.setData("dossier-source", dossierSource);
 }
 
-function dropESP(e, dossierNom) {
+
+function dropESP(e, dossierCible) {
     e.preventDefault();
-    if (!draggedESP) return;
+    const espId = e.dataTransfer.getData("text/plain");
+    const dossierSource = e.dataTransfer.getData("dossier-source");
 
-    const dossiers = JSON.parse(localStorage.getItem("dossiers")) || [];
-    dossiers.forEach(d => {
-        let ruches = JSON.parse(localStorage.getItem(`dossier_${d}`)) || [];
-        ruches = ruches.filter(r => r !== draggedESP);
-        localStorage.setItem(`dossier_${d}`, JSON.stringify(ruches));
-    });
+    if (!espId || !dossierSource) return;
+    if (dossierSource === dossierCible) return; // même dossier
 
-    let ruches = JSON.parse(localStorage.getItem(`dossier_${dossierNom}`)) || [];
-    ruches.push(draggedESP);
-    localStorage.setItem(`dossier_${dossierNom}`, JSON.stringify(ruches));
+    // Supprimer de l’ancien dossier
+    let espSourceList = JSON.parse(localStorage.getItem("dossier_" + dossierSource) || "[]");
+    espSourceList = espSourceList.filter(id => id !== espId);
+    localStorage.setItem("dossier_" + dossierSource, JSON.stringify(espSourceList));
 
-    loadDossiersLocal();
-    draggedESP = null;
+    // Ajouter au dossier cible
+    let espCibleList = JSON.parse(localStorage.getItem("dossier_" + dossierCible) || "[]");
+    espCibleList = Array.from(new Set([...espCibleList, espId]));
+    localStorage.setItem("dossier_" + dossierCible, JSON.stringify(espCibleList));
+
+    // Mettre à jour l’affichage
+    afficherTousLesDossiers();
 }
 
 
@@ -1889,39 +1894,49 @@ function creerDossierInterfaceSecurisee(nom, ruches) {
         return false;
     }
 }
+// Transforme un nom de dossier en ID sûr pour le DOM
+function makeIdSafe(nom) {
+    return nom.replace(/\s+/g, "_").replace(/[^\w\-]/g, "") + "-submenu";
+}
+
 // Fonction pour créer un dossier et son submenu dans la sidebar
 // 🔹 Fonction pour créer un dossier et son submenu dans la sidebar
 function creerDossierInterface(nom, ruches = []) {
     const sidebar = document.getElementById("sidebarRuches");
     if (!sidebar) return;
 
-    if (document.getElementById(nom + "-submenu")) return;
+    const submenuId = makeIdSafe(nom);
+    if (document.getElementById(submenuId)) return;
 
+    // Titre du dossier
     const divTitle = document.createElement("div");
     divTitle.className = "menu-item dossier-title";
     divTitle.textContent = nom;
-    divTitle.onclick = () => toggleDossier(nom + "-submenu");
+    divTitle.onclick = () => toggleDossier(submenuId);
     sidebar.appendChild(divTitle);
 
+    // Sous-menu
     const divSubmenu = document.createElement("div");
     divSubmenu.className = "submenu";
-    divSubmenu.id = nom + "-submenu";
+    divSubmenu.id = submenuId;
     divSubmenu.style.display = "none";
     divSubmenu.style.marginLeft = "15px";
     divSubmenu.ondragover = e => e.preventDefault();
     divSubmenu.ondrop = e => dropESP(e, nom);
     sidebar.appendChild(divSubmenu);
 
-    ruches.forEach(espId => {
+    // ESP
+    (ruches || []).forEach(espId => {
         const espDiv = document.createElement("div");
         espDiv.className = "menu-item";
         espDiv.id = espId + "-title";
         espDiv.draggable = true;
-        espDiv.ondragstart = e => startDrag(e, espId);
+        espDiv.ondragstart = e => startDrag(e, espId, nom);
         espDiv.textContent = espId;
         divSubmenu.appendChild(espDiv);
     });
 }
+
 
 
 
