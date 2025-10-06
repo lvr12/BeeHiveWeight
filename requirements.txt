@@ -1,0 +1,4 @@
+flask
+datetime
+PyJWT
+openpyxl

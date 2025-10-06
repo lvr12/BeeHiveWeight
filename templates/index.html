@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruchers</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Iconify Icons -->
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- XLSX -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Ton CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <button class="hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <div class="sidebar">
+        <h2>Ruchers</h2>
+
+        <div class="menu-item dashboard-item" onclick="afficherDashboard();">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </div>
+
+        <div id="sidebarRuches">
+            {% for dossier, ruches in dossiers_dict.items() %}
+            <div class="menu-item dossier-title" data-dossier="{{ dossier }}" onclick="toggleDossier('{{ dossier }}')">
+                <i class="fas fa-folder"></i> {{ dossier }}
+            </div>
+            <div class="submenu" id="{{ dossier }}" style="display:none; margin-left:15px;" data-dossier="{{ dossier }}">
+                {% for ruche in ruches %}
+                    <div class="menu-item" id="{{ ruche }}-title" draggable="true"
+                        onclick="afficherTousLesGraphiques('{{ ruche }}'); toggleSubmenu('{{ ruche }}')"
+                        ondragstart="startDrag(event, '{{ ruche }}')">
+                        <span class="iconify" data-icon="game-icons:beehive"></span> {{ ruche }}
+                    </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+    
+    <!-- Les dossiers utilisateur seront ajoutés ici dynamiquement -->
+        </div>
+
+        <!-- 🔹 Conteneur qui recevra les boutons Créer/Supprimer -->
+        <div id="gestionSidebar" style="display:none; margin-top:15px;">
+            <!-- Les boutons seront injectés par app.js -->
+        </div>
+
+        <button id="settingsBtn" class="config-button" onclick="ouvrirParam()">⚙ Paramètres</button>
+    </div>
+
+    <div class="main">
+        <div id="charts" style="display:flex; gap:20px; flex-wrap: wrap;">
+            <canvas id="graphique-poids" width="400" height="200"></canvas>
+            <canvas id="graphique-temperature" width="400" height="200"></canvas>
+            <canvas id="graphique-humidite" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <div id="configModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h2>Paramètres</h2>
+            <button onclick="ouvrirRenommerESP()" style="margin-bottom:10px;">Renommer les ESP</button>
+            <!--<button onclick="ajouterDossier()" style="margin-bottom:10px;">Ajouter un dossier</button>-->
+            <button onclick="afficherFormulaireESP()" style="margin-bottom:10px;">➕ Ajouter un ESP32</button>
+
+            <!-- Nouveau : bouton gérer dossiers -->
+            <button onclick="afficherGestionDossiers()" style="margin-bottom:10px;">🗑 Gérer dossiers</button>
+
+            <!-- Formulaire ESP -->
+            <div id="esp-form-container" style="display:none; margin-bottom:10px;">
+                <input type="text" id="esp-id" placeholder="ID de l'ESP32">
+                <input type="text" id="esp-key" placeholder="Clé de l'ESP32">
+                <button onclick="ajouterESP()">Ajouter</button>
+            </div>
+
+            <!-- Liste ESP ajoutés -->
+            <div id="esp-name-container">
+                {% for esp_id, esp_key in esp_tokens.items() %}
+                    <div class="esp-item">ID: {{ esp_id }}, Clé: {{ esp_key }}</div>
+                {% endfor %}
+            </div>
+
+            <!-- Liste pour gérer les dossiers -->
+            <div id="gestion-dossiers-container" style="display:none; margin-top:10px;"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                <button onclick="fermerConfig()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.historiqueRuches = {{ dernieres_valeurs_dict|tojson|safe }};
+    </script>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/esp-sync.js') }}" defer></script
+</body>
+</html>
