@@ -1,97 +1,97 @@
+// ==========================
+// esp-sync.js - Gestion Dossiers & ESP
+// ==========================
 
+// Crée un dossier dans la sidebar
+function ajouterDossierAvecESP(nomDossier, listeESP = []) {
+    if (!nomDossier || nomDossier.trim() === "") return;
 
-// ---------------------------
-// Fonction debug
-// ---------------------------
-function dev(msg, data = null) {
-    if (data !== null) console.log("[DEV]", msg, data);
-    else console.log("[DEV]", msg);
+    // Mettre à jour la liste de tous les dossiers
+    let dossiers = JSON.parse(localStorage.getItem("dossiers_utilisateur") || "[]");
+    if (!dossiers.includes(nomDossier)) {
+        dossiers.push(nomDossier);
+        localStorage.setItem("dossiers_utilisateur", JSON.stringify(dossiers));
+    }
+
+    // Mettre à jour la liste des ESP
+    let espExistants = JSON.parse(localStorage.getItem("dossier_" + nomDossier) || "[]");
+    const espMisesAJour = Array.from(new Set([...espExistants, ...listeESP]));
+    localStorage.setItem("dossier_" + nomDossier, JSON.stringify(espMisesAJour));
+
+    // Mettre à jour l'affichage via la fonction déjà présente dans app.js
+    creerDossierInterface(nomDossier, espMisesAJour);
 }
-
-// ---------------------------
-// Toggle dossier
-// ---------------------------
+// Toggle affichage du sous-menu
 function toggleDossier(submenuId) {
     const submenu = document.getElementById(submenuId);
     if (!submenu) return;
     submenu.style.display = submenu.style.display === "none" ? "block" : "none";
 }
 
-// ---------------------------
-// Créer un dossier dans la sidebar
-// ---------------------------
-function creerDossierInterface(nom, ruches = []) {
+// Afficher tous les dossiers depuis localStorage
+function afficherTousLesDossiers() {
     const sidebar = document.getElementById("sidebarRuches");
     if (!sidebar) return;
+    sidebar.innerHTML = "";
 
-    if (document.getElementById(nom + "-submenu")) return;
-
-    const divTitle = document.createElement("div");
-    divTitle.className = "menu-item dossier-title";
-    divTitle.textContent = nom;
-    divTitle.onclick = () => toggleDossier(nom + "-submenu");
-    sidebar.appendChild(divTitle);
-
-    const divSubmenu = document.createElement("div");
-    divSubmenu.className = "submenu";
-    divSubmenu.id = nom + "-submenu";
-    divSubmenu.style.display = "none";
-    divSubmenu.style.marginLeft = "15px";
-    divSubmenu.ondragover = e => e.preventDefault();
-    divSubmenu.ondrop = e => dropESP(e, nom);
-    sidebar.appendChild(divSubmenu);
-
-    // === ici ===
-    (ruches || []).forEach(espId => {
-        const espDiv = document.createElement("div");
-        espDiv.className = "menu-item";
-        espDiv.id = espId + "-title";
-        espDiv.draggable = true;
-        espDiv.ondragstart = e => startDrag(e, espId);
-        espDiv.textContent = espId;
-        divSubmenu.appendChild(espDiv);
+    const dossiers = JSON.parse(localStorage.getItem("dossiers_utilisateur") || "[]");
+    dossiers.forEach(nomDossier => {
+        const ruches = JSON.parse(localStorage.getItem("dossier_" + nomDossier) || "[]");
+        creerDossierInterface(nomDossier, ruches);
     });
 }
 
-// ---------------------------
-// Synchroniser ESP manquants
-// ---------------------------
-async function synchroniserESP() {
-    dev("synchroniserESP démarrée");
+// Créer un nouveau dossier via prompt
+function ajouterDossier() {
+    const nomDossier = prompt("Entrez le nom du dossier :");
+    if (!nomDossier || nomDossier.trim() === "") {
+        alert("Nom de dossier invalide !");
+        return;
+    }
 
+    ajouterDossierAvecESP(nomDossier, []); // Pas d'ESP au départ
+}
+
+// Ajouter un dossier avec ESP (préserve les anciens ESP)
+function ajouterDossierAvecESP(nomDossier, listeESP = []) {
+    if (!nomDossier || nomDossier.trim() === "") return;
+
+    // 1️⃣ Mettre à jour la liste de tous les dossiers
+    let dossiers = JSON.parse(localStorage.getItem("dossiers_utilisateur") || "[]");
+    if (!dossiers.includes(nomDossier)) {
+        dossiers.push(nomDossier);
+        localStorage.setItem("dossiers_utilisateur", JSON.stringify(dossiers));
+    }
+
+    // 2️⃣ Mettre à jour la liste des ESP du dossier
+    let espExistants = JSON.parse(localStorage.getItem("dossier_" + nomDossier) || "[]");
+    const espMisesAJour = Array.from(new Set([...espExistants, ...listeESP]));
+    localStorage.setItem("dossier_" + nomDossier, JSON.stringify(espMisesAJour));
+
+    // 3️⃣ Mettre à jour l'affichage
+    afficherTousLesDossiers();
+}
+
+// Synchroniser les ESP depuis le JSON et créer le dossier "ESP manquants"
+async function synchroniserESP() {
     try {
-        // Récupération des ESP depuis le JSON
         const res = await fetch("/static/esp32.json");
         if (!res.ok) throw new Error("Erreur fetch esp32.json");
         const data = await res.json();
         const espIds = Object.keys(data);
 
-        // Récupération de la liste des dossiers (liste de noms)
-        let dossiersUtilisateur = JSON.parse(localStorage.getItem("dossiers_utilisateur") || "[]");
-
-        // Récupération des ESP déjà classés
-        let dejaClasses = new Set();
-        dossiersUtilisateur.forEach(nomDossier => {
+        // Identifier tous les ESP déjà classés
+        const dossiers = JSON.parse(localStorage.getItem("dossiers_utilisateur") || "[]");
+        const dejaClasses = new Set();
+        dossiers.forEach(nomDossier => {
             const espListe = JSON.parse(localStorage.getItem("dossier_" + nomDossier) || "[]");
             espListe.forEach(id => dejaClasses.add(id));
         });
 
         // ESP manquants
         const manquants = espIds.filter(id => !dejaClasses.has(id));
-        dev("ESP manquants :", manquants);
-
         if (manquants.length > 0) {
-            // Ajouter le dossier "ESP manquants" si ce n'est pas déjà présent
-            if (!dossiersUtilisateur.includes("ESP manquants")) {
-                dossiersUtilisateur.push("ESP manquants");
-                localStorage.setItem("dossiers_utilisateur", JSON.stringify(dossiersUtilisateur));
-            }
-
-            // Stocker les ESP manquants dans leur propre liste
-            localStorage.setItem("dossier_espmanquants", JSON.stringify(manquants));
-
-            creerDossierInterface("ESP manquants", manquants);
-            dev("Dossier 'ESP manquants' créé et stocké dans dossier_espmanquants");
+            ajouterDossierAvecESP("ESP manquants", manquants);
         }
 
     } catch (err) {
@@ -99,12 +99,23 @@ async function synchroniserESP() {
     }
 }
 
+// ==========================
+// Drag & Drop
+// ==========================
+function startDrag(e, espId) {
+    e.dataTransfer.setData("text/plain", espId);
+}
 
+function dropESP(e, nomDossier) {
+    e.preventDefault();
+    const espId = e.dataTransfer.getData("text/plain");
+    ajouterDossierAvecESP(nomDossier, [espId]);
+}
 
-
-// ---------------------------
-// Lancement automatique
-// ---------------------------
-document.addEventListener("DOMContentLoaded", () => {
+// ==========================
+// Initialisation au chargement
+// ==========================
+window.addEventListener("DOMContentLoaded", () => {
+    afficherTousLesDossiers();
     synchroniserESP();
 });
