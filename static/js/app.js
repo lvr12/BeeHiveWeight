@@ -932,10 +932,37 @@ function creerGraphiqueTous(rucher, type) {
         }
     });
 }
+async function afficherHistoriqueESP(espId) {
+    try {
+        const res = await fetch(`historique/historique_${espId}.json`);
+        if (!res.ok) throw new Error("Impossible de charger le JSON historique");
+        const data = await res.json();
 
+        // Stocker les données dans historiqueRuches
+        historiqueRuches[espId] = [];
+        const longueur = Math.max(data.poids.length, data.temperature.length, data.humidite.length);
+
+        for (let i = 0; i < longueur; i++) {
+            historiqueRuches[espId].push({
+                heure: data.poids[i]?.date || data.temperature[i]?.date || data.humidite[i]?.date,
+                poids: data.poids[i]?.value ?? null,
+                temperature: data.temperature[i]?.value ?? null,
+                humidite: data.humidite[i]?.value ?? null
+            });
+        }
+
+        // Afficher les trois graphiques
+        afficherGraphique(espId, 'poids');
+        afficherGraphique(espId, 'temperature');
+        afficherGraphique(espId, 'humidite');
+
+    } catch (err) {
+        console.error("Erreur chargement historique ESP :", err);
+    }
+}
 function afficherGraphique(rucher, type) {
     let dataFiltrée = historiqueRuches[rucher] || [];
-    dataFiltrée = dataFiltrée.slice(-10);
+    dataFiltrée = dataFiltrée.slice(-10); // prendre les 10 dernières valeurs
 
     const labels = dataFiltrée.map(d => new Date(d.heure).toLocaleTimeString());
     let dataPoints = [];
@@ -968,9 +995,9 @@ function afficherGraphique(rucher, type) {
         if (dernierPoids > avantDernierPoids) {
             fleche.style.transform = 'rotate(90deg)';
         } else if (dernierPoids < avantDernierPoids) {
-            fleche.style.transform = 'rotate(90deg)';
+            fleche.style.transform = 'rotate(-90deg)';
         } else {
-            fleche.style.transform = 'rotate(90deg)';
+            fleche.style.transform = 'rotate(0deg)';
         }
     } else if (type === 'temperature' && dataPoints.length > 0) {
         document.getElementById('derniere-valeur-temperature').textContent = dataPoints[dataPoints.length - 1].toFixed(1);
@@ -980,14 +1007,35 @@ function afficherGraphique(rucher, type) {
         document.getElementById('unite-valeur-humidite').textContent = '%';
     }
 
+    // Créer / mettre à jour le graphique
     const canvasId = `graphique-${type}`;
     const ctx = document.getElementById(canvasId).getContext('2d');
 
     if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
 
     const color = type === 'poids' ? '#007bff' : (type === 'temperature' ? '#dc3545' : '#28a745');
-    chartInstances[canvasId] = new Chart(ctx, buildPrettyChartConfig(labels, dataPoints, labelY, color, ctx));
-}function chargerTheme() {
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: labelY,
+                data: dataPoints,
+                borderColor: color,
+                backgroundColor: color + '33',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { display: true },
+                y: { display: true }
+            }
+        }
+    });
+}
+function chargerTheme() {
     const theme = localStorage.getItem('theme') || 'light';
     appliquerTheme(theme);
 }
@@ -1926,16 +1974,24 @@ function creerDossierInterface(nom, ruches = []) {
     sidebar.appendChild(divSubmenu);
 
     // ESP
-    (ruches || []).forEach(espId => {
-        const espDiv = document.createElement("div");
-        espDiv.className = "menu-item";
-        espDiv.id = espId + "-title";
-        espDiv.draggable = true;
-        espDiv.ondragstart = e => startDrag(e, espId, nom);
-        espDiv.textContent = espId;
-        divSubmenu.appendChild(espDiv);
-    });
+   ruches.forEach(espId => {
+    const espDiv = document.createElement("div");
+    espDiv.className = "menu-item";
+    espDiv.id = espId + "-title";
+    espDiv.draggable = true;
+
+    // ⚡ Clic pour drag & drop
+    espDiv.ondragstart = e => startDrag(e, espId, nom);
+
+    // ⚡ Clic pour afficher les graphiques
+    espDiv.onclick = () => afficherHistoriqueESP(espId);
+
+    espDiv.textContent = espId;
+    divSubmenu.appendChild(espDiv);
+
+});
 }
+
 
 
 
