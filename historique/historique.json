@@ -1,0 +1,9 @@
+[
+    {
+        "esp_id": "esp1",
+        "temperature": 28,
+        "humidite": 47,
+        "poids": 1062,
+        "timestamp": "2025-10-11 10:38:39"
+    }
+]
