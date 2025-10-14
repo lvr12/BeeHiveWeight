@@ -1,4 +1,4 @@
-from flask import Flask, request, session, redirect, url_for, render_template, jsonify
+from flask import Flask, request, session, redirect, url_for, render_template, jsonify, send_from_directory
 import json
 import os
 from datetime import datetime
@@ -7,6 +7,7 @@ app = Flask(__name__)
 app.secret_key = "votre_cle_secrete"
 
 # --- Répertoires ---
+HISTORIQUE_DIRS = os.path.join(os.getcwd(), "historique")
 HISTO_DIR = "historique"
 ESP_FILE = "static/esp32.json"
 if not os.path.exists(HISTO_DIR):
@@ -44,6 +45,64 @@ def login():
             flash("Identifiants incorrects.", "error")
             return render_template("login.html", error="Identifiants incorrects")
     return render_template("login.html")
+@app.route("/add/<esp_id>", methods=["POST"])
+def add_esp(esp_id):
+    # Charger les ESP autorisés depuis esp32.json
+    if not os.path.exists("esp32.json"):
+        return "Fichier esp32.json manquant", 500
+
+    with open("esp32.json", "r") as f:
+        esp_tokens = json.load(f)
+
+    # Vérifier si l'ESP est autorisé
+    if esp_id not in esp_tokens:
+        return "ESP non autorisé", 401
+
+    # Récupérer les données envoyées par l'ESP
+    data = request.get_json()
+    token = data.get("token")
+    if token != esp_tokens[esp_id]:
+        return "Token invalide", 401
+
+    poids = data.get("poids")
+    temperature = data.get("temperature")
+    humidite = data.get("humidite")
+
+    # Définir le fichier historique spécifique à cet ESP
+    filename = f"historique_{esp_id}.json"
+
+    # Charger ou créer l'historique
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            historique = json.load(f)
+    else:
+        historique = []
+
+    # Vérifier alerte poids si besoin
+    if historique:
+        dernier_poids = historique[-1]["poids"]
+        if abs(poids - dernier_poids) >= 1:  # seuil de 1 kg par exemple
+            from alerte import envoyer_alerte
+            envoyer_alerte(dernier_poids, poids, rucher=esp_id)
+
+    # Ajouter la nouvelle entrée
+    historique.append({
+        "poids": poids,
+        "temperature": temperature,
+        "humidite": humidite,
+        "heure": datetime.now().isoformat()
+    })
+
+    # Exporter et réinitialiser si plus de 365 entrées
+    if len(historique) >= 365:
+        export.export_to_excel(historique, filename_prefix=esp_id)
+        historique = []
+
+    # Sauvegarder l'historique
+    with open(filename, "w") as f:
+        json.dump(historique, f, indent=4)
+
+    return jsonify({"message": "Données ajoutées avec succès"}), 200
 
 @app.route("/logout")
 def logout():
@@ -83,7 +142,9 @@ def index():
         dossiers_dict=dossiers_dict,
         esp_tokens=esp_tokens
     )
-
+@app.route("/historique/<filename>")
+def historique(filename):
+    return send_from_directory(HISTORIQUE_DIRS, filename)
 # --- Ajouter un ESP ---
 @app.route("/add_esp32", methods=["POST"])
 def add_esp32_json():

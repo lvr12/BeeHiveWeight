@@ -799,7 +799,7 @@ function afficherTousLesGraphiques(rucheId) {
 
     const mainContainer = document.querySelector('.main');
     mainContainer.innerHTML = `
-        <h2 style="color: #333; margin-bottom: 20px;">${rucher}</h2>
+        <h2 style="color: #333; margin-bottom: 20px;">${rucheId}</h2>
         <div id="graph-poids-container">
             <h3>Poids</h3>
             <div id="dernier-poids-container-poids">
@@ -809,29 +809,36 @@ function afficherTousLesGraphiques(rucheId) {
                     <div id="pointe-poids"></div>
                 </div>
             </div>
-            <canvas id="graphique-poids"></canvas>
+            <canvas id="graphique-poids" width="400" height="200"></canvas>
         </div>
         <div id="graph-temperature-container">
             <h3>Température</h3>
             <div id="derniere-valeur-container-temperature">
                 <div id="derniere-valeur-temperature">0</div>
-                <div id="unite-valeur-temperature"></div>
+                <div id="unite-valeur-temperature">°C</div>
             </div>
-            <canvas id="graphique-temperature"></canvas>
+            <canvas id="graphique-temperature" width="400" height="200"></canvas>
         </div>
         <div id="graph-humidite-container">
             <h3>Humidité</h3>
             <div id="derniere-valeur-container-humidite">
                 <div id="derniere-valeur-humidite">0</div>
-                <div id="unite-valeur-humidite"></div>
+                <div id="unite-valeur-humidite">%</div>
             </div>
-            <canvas id="graphique-humidite"></canvas>
+            <canvas id="graphique-humidite" width="400" height="200"></canvas>
         </div>
     `;
 
-    afficherGraphique(rucherId, 'poids');
-    afficherGraphique(rucherId, 'temperature');
-    afficherGraphique(rucherId, 'humidite');
+    // Récupérer les données avant d’afficher les graphiques
+    fetch(`/historique/historique_${rucheId}.json`)
+        .then(res => res.json())
+        .then(data => {
+            afficherGraphique(rucheId, 'poids', data);
+            afficherGraphique(rucheId, 'temperature', data);
+            afficherGraphique(rucheId, 'humidite', data);
+        })
+        .catch(err => console.error("Erreur chargement historique ESP :", err));
+
 }
 
 
@@ -932,34 +939,41 @@ function creerGraphiqueTous(rucher, type) {
         }
     });
 }
-async function afficherHistoriqueESP(espId) {
-    try {
-        const res = await fetch(`historique/historique_${espId}.json`);
-        if (!res.ok) throw new Error("Impossible de charger le JSON historique");
-        const data = await res.json();
+function afficherHistoriqueESP(espId) {
+    console.log("📡 Chargement de l’historique pour :", espId);
 
-        // Stocker les données dans historiqueRuches
-        historiqueRuches[espId] = [];
-        const longueur = Math.max(data.poids.length, data.temperature.length, data.humidite.length);
-
-        for (let i = 0; i < longueur; i++) {
-            historiqueRuches[espId].push({
-                heure: data.poids[i]?.date || data.temperature[i]?.date || data.humidite[i]?.date,
-                poids: data.poids[i]?.value ?? null,
-                temperature: data.temperature[i]?.value ?? null,
-                humidite: data.humidite[i]?.value ?? null
-            });
-        }
-
-        // Afficher les trois graphiques
-        afficherGraphique(espId, 'poids');
-        afficherGraphique(espId, 'temperature');
-        afficherGraphique(espId, 'humidite');
-
-    } catch (err) {
-        console.error("Erreur chargement historique ESP :", err);
+    const container = document.getElementById('esp-historique');
+    if (!container) {
+        console.error("❌ Container #esp-historique non trouvé !");
+        return;
     }
+
+    // Rendre le container visible avant de créer les graphiques
+    container.style.display = 'block';
+
+    fetch(`/historique/historique_${espId}.json`)
+        .then(res => res.json())
+        .then(data => {
+            // Normaliser les données : si c'est un objet unique, on le transforme en tableau
+            if (!Array.isArray(data)) {
+                data = [data];
+            }
+
+            console.log("✅ Données reçues : ", data);
+
+            // Vérifier que chaque champ existe avant d'appeler afficherGraphique
+            const poidsExist = data.some(d => d.poids != null);
+            const tempExist = data.some(d => d.temperature != null);
+            const humidExist = data.some(d => d.humidite != null);
+
+            if (poidsExist) afficherGraphique(espId, 'poids', data);
+            if (tempExist) afficherGraphique(espId, 'temperature', data);
+            if (humidExist) afficherGraphique(espId, 'humidite', data);
+
+        })
+        .catch(err => console.error("Erreur chargement historique ESP :", err));
 }
+
 function afficherGraphique(rucher, type) {
     let dataFiltrée = historiqueRuches[rucher] || [];
     dataFiltrée = dataFiltrée.slice(-10); // prendre les 10 dernières valeurs
@@ -1984,7 +1998,7 @@ function creerDossierInterface(nom, ruches = []) {
     espDiv.ondragstart = e => startDrag(e, espId, nom);
 
     // ⚡ Clic pour afficher les graphiques
-    espDiv.onclick = () => afficherHistoriqueESP(espId);
+    espDiv.onclick = () => afficherDashboardESP(espId);
 
     espDiv.textContent = espId;
     divSubmenu.appendChild(espDiv);
@@ -2480,8 +2494,50 @@ function afficherTousLesDossiers() {
         creerDossierInterface(nomDossier, ruches);
     });
 }
+function afficherDashboardESP(espId) {
+    closeSidebarOnMenuClick();
 
+    const main = document.getElementById("main-content");
 
+    // On vide le contenu actuel
+    main.innerHTML = `
+        <h2 style="margin-bottom: 20px;">Données - ${espId}</h2>
+        <div class="dashboard-grid">
+
+            <!-- Carte Poids -->
+            <div class="card">
+                <h3>Poids</h3>
+                <div id="dernier-poids-poids">--</div>
+                <div id="fleche-container-poids" style="transition: transform 0.3s;">
+                    <div id="trait-poids"></div>
+                    <div id="pointe-poids"></div>
+                </div>
+                <canvas id="graphique-poids"></canvas>
+            </div>
+
+            <!-- Carte Température -->
+            <div class="card">
+                <h3>Température</h3>
+                <div id="derniere-valeur-temperature">--</div>
+                <div id="unite-valeur-temperature">°C</div>
+                <canvas id="graphique-temperature"></canvas>
+            </div>
+
+            <!-- Carte Humidité -->
+            <div class="card">
+                <h3>Humidité</h3>
+                <div id="derniere-valeur-humidite">--</div>
+                <div id="unite-valeur-humidite">%</div>
+                <canvas id="graphique-humidite"></canvas>
+            </div>
+        </div>
+    `;
+
+    // On réutilise ta fonction existante
+    afficherGraphique(espId, 'poids');
+    afficherGraphique(espId, 'temperature');
+    afficherGraphique(espId, 'humidite');
+}
 
 // 🔹 Synchroniser les ESP : s'assure que chaque ESP du JSON est présent dans au moins un dossier
 
