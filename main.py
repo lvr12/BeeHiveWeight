@@ -47,11 +47,12 @@ def login():
     return render_template("login.html")
 @app.route("/add/<esp_id>", methods=["POST"])
 def add_esp(esp_id):
-    # Charger les ESP autorisés depuis esp32.json
-    if not os.path.exists("esp32.json"):
+    # Charger les ESP autorisés depuis static/esp32.json
+    ESP_PATH = os.path.join("static", "esp32.json")
+    if not os.path.exists(ESP_PATH):
         return "Fichier esp32.json manquant", 500
 
-    with open("esp32.json", "r") as f:
+    with open(ESP_PATH, "r") as f:
         esp_tokens = json.load(f)
 
     # Vérifier si l'ESP est autorisé
@@ -69,7 +70,7 @@ def add_esp(esp_id):
     humidite = data.get("humidite")
 
     # Définir le fichier historique spécifique à cet ESP
-    filename = f"historique_{esp_id}.json"
+    filename = os.path.join("historique", f"historique_{esp_id}.json")
 
     # Charger ou créer l'historique
     if os.path.exists(filename):
@@ -77,13 +78,6 @@ def add_esp(esp_id):
             historique = json.load(f)
     else:
         historique = []
-
-    # Vérifier alerte poids si besoin
-    if historique:
-        dernier_poids = historique[-1]["poids"]
-        if abs(poids - dernier_poids) >= 1:  # seuil de 1 kg par exemple
-            from alerte import envoyer_alerte
-            envoyer_alerte(dernier_poids, poids, rucher=esp_id)
 
     # Ajouter la nouvelle entrée
     historique.append({
@@ -93,17 +87,11 @@ def add_esp(esp_id):
         "heure": datetime.now().isoformat()
     })
 
-    # Exporter et réinitialiser si plus de 365 entrées
-    if len(historique) >= 365:
-        export.export_to_excel(historique, filename_prefix=esp_id)
-        historique = []
-
     # Sauvegarder l'historique
     with open(filename, "w") as f:
         json.dump(historique, f, indent=4)
 
     return jsonify({"message": "Données ajoutées avec succès"}), 200
-
 @app.route("/logout")
 def logout():
     session.pop("user", None)
