@@ -583,6 +583,62 @@ function desactiverDragAndDrop(card) {
     card.removeEventListener('dragstart', handleDragStart);
     card.removeEventListener('dragend', handleDragEnd);
 }
+// ⚡ Active le drop sur les dossiers
+// ⚡ Active le drop sur les dossiers
+function activerDropSurDossier(dossierId) {
+    const dossier = document.getElementById(dossierId);
+    if (!dossier) return;
+
+    // S'assurer que le dossier est visible
+    if (dossier.style.display === 'none') {
+        dossier.style.display = 'block';
+    }
+
+    // Autoriser le dragover
+    dossier.addEventListener('dragover', function(e) {
+        e.preventDefault(); // indispensable pour autoriser le drop
+        dossier.classList.add('dossier-survol');
+    });
+
+    dossier.addEventListener('dragleave', function() {
+        dossier.classList.remove('dossier-survol');
+    });
+
+    dossier.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dossier.classList.remove('dossier-survol');
+        const espId = e.dataTransfer.getData('text/plain');
+        if (espId) {
+            const espElem = document.getElementById(espId + '-title');
+            if (espElem) {
+                dossier.appendChild(espElem);
+            }
+        }
+    });
+}
+function handleDragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.id); 
+    e.dataTransfer.effectAllowed = 'move'; // permet le déplacement
+}
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+}
+
+
+function activerDropTousDossiers() {
+    const dossiers = document.querySelectorAll('.submenu');
+    dossiers.forEach(dossier => {
+        activerDropSurDossier(dossier.id);
+    });
+}
+function creerESPDansSidebar(espId) {
+    const espDiv = document.createElement('div');
+    espDiv.className = 'menu-item';
+    espDiv.id = espId + '-title';
+    espDiv.textContent = espId;
+    activerDragAndDrop(espDiv);
+    return espDiv;
+}
 
 function creerZonesDeDépôt() {
     const grid = document.getElementById('dashboard-grid');
@@ -1181,10 +1237,20 @@ function renderHives() {
 
 // Ouvre la fenêtre Paramètres
 function ouvrirParam() {
-    document.getElementById('configModal').style.display = 'flex';
-    document.getElementById('esp-name-container').innerHTML = ''; // vide le formulaire
-    document.getElementById('saveESPBtn').style.display = 'none'; // cacher le bouton sauvegarder
+    const modal = document.getElementById('configModal');
+    const espContainer = document.getElementById('esp-name-container');
+    const saveBtn = document.getElementById('saveESPBtn');
+    
+    if (!modal) {
+        console.error("❌ #configModal introuvable !");
+        return;
+    }
+    modal.style.display = 'flex';
+
+    if (espContainer) espContainer.innerHTML = ''; // vide le formulaire
+    if (saveBtn) saveBtn.style.display = 'none';    // cacher le bouton sauvegarder
 }
+
 
 // Ferme le modal quand on clique sur la croix
 document.getElementById('closeParamModal').onclick = function() {
@@ -1515,8 +1581,14 @@ function ouvrirRenommerESP() {
         container.appendChild(input);
     });
 
-    document.getElementById('saveESPBtn').style.display = 'inline-block'; // montrer le bouton enregistrer
+    const saveBtn = document.getElementById('saveESPBtn');
+    if (saveBtn) {
+        saveBtn.style.display = 'inline-block'; // montrer le bouton enregistrer
+    } else {
+        console.warn("❌ #saveESPBtn introuvable !");
+    }
 }
+
 
 function deplacerESPVersDossier(espId, dossierId) {
     const espElem = document.getElementById(espId + '-title');
@@ -1566,32 +1638,26 @@ function allowDrop(ev) {
 
 let draggedESP = null;
 
-function startDrag(e, espId, dossierSource) {
-    e.dataTransfer.setData("text/plain", espId);
-    e.dataTransfer.setData("dossier-source", dossierSource);
+function startDrag(event, espId) {
+    // Déplier le dossier parent
+    const dossier = event.target.closest('.submenu');
+    if (dossier) dossier.style.display = 'block';
+
+    event.dataTransfer.setData('text/plain', espId);
+    event.dataTransfer.effectAllowed = 'move';
 }
 
 
-function dropESP(e, dossierCible) {
-    e.preventDefault();
-    const espId = e.dataTransfer.getData("text/plain");
-    const dossierSource = e.dataTransfer.getData("dossier-source");
 
-    if (!espId || !dossierSource) return;
-    if (dossierSource === dossierCible) return; // même dossier
+function dropESP(event, dossierId) {
+    event.preventDefault();
+    const espId = event.dataTransfer.getData('text/plain');
+    const dossier = document.getElementById(dossierId);
+    const espElem = document.getElementById(espId + '-title');
 
-    // Supprimer de l’ancien dossier
-    let espSourceList = JSON.parse(localStorage.getItem("dossier_" + dossierSource) || "[]");
-    espSourceList = espSourceList.filter(id => id !== espId);
-    localStorage.setItem("dossier_" + dossierSource, JSON.stringify(espSourceList));
-
-    // Ajouter au dossier cible
-    let espCibleList = JSON.parse(localStorage.getItem("dossier_" + dossierCible) || "[]");
-    espCibleList = Array.from(new Set([...espCibleList, espId]));
-    localStorage.setItem("dossier_" + dossierCible, JSON.stringify(espCibleList));
-
-    // Mettre à jour l’affichage
-    afficherTousLesDossiers();
+    if (espElem && dossier) {
+        dossier.appendChild(espElem);
+    }
 }
 
 
@@ -2538,14 +2604,15 @@ function afficherDashboardESP(espId) {
     afficherGraphique(espId, 'temperature');
     afficherGraphique(espId, 'humidite');
 }
+// Après que les dossiers et ESP soient générés
+window.addEventListener('load', () => {
+    activerDropTousDossiers();
 
-// 🔹 Synchroniser les ESP : s'assure que chaque ESP du JSON est présent dans au moins un dossier
+    // Activer drag sur chaque ESP existant
+    const esps = document.querySelectorAll('.menu-item[id$="-title"]');
+    esps.forEach(esp => activerDragAndDrop(esp));
+});
 
-// ✅ Vérification que la page est bien prête
-
-// Exécutez cette fonction et partagez-moi le résultat
-// Appelez cette fonction après un rechargement pour voir ce qui se passe
-// Dans initializeApp(), remplacez reconstruireDossiers() par :
 waitForBackendThenReconstruct();
 // Appel au chargement de la page
 document.addEventListener('DOMContentLoaded', remplirSelectCartes);

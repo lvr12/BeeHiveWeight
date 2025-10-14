@@ -58,26 +58,33 @@
     <div id="configModal" class="modal" style="display:none;">
         <div class="modal-content">
             <h2>Paramètres</h2>
+            <button onclick="ouvrirRenommerESP()" style="margin-bottom:10px;">Renommer les ESP</button>
+            <!--<button onclick="ajouterDossier()" style="margin-bottom:10px;">Ajouter un dossier</button>-->
             <button onclick="afficherFormulaireESP()" style="margin-bottom:10px;">➕ Ajouter un ESP32</button>
 
+            <!-- Nouveau : bouton gérer dossiers -->
+            <button onclick="afficherGestionDossiers()" style="margin-bottom:10px;">🗑 Gérer dossiers</button>
+
+            <!-- Formulaire ESP -->
             <div id="esp-form-container" style="display:none; margin-bottom:10px;">
                 <input type="text" id="esp-id" placeholder="ID de l'ESP32">
                 <input type="text" id="esp-key" placeholder="Clé de l'ESP32">
                 <button onclick="ajouterESP()">Ajouter</button>
             </div>
 
+            <!-- Liste ESP ajoutés -->
             <div id="esp-name-container">
                 {% for esp_id, esp_key in esp_tokens.items() %}
                     <div class="esp-item">ID: {{ esp_id }}, Clé: {{ esp_key }}</div>
                 {% endfor %}
             </div>
 
+            <!-- Liste pour gérer les dossiers -->
+            <div id="gestion-dossiers-container" style="display:none; margin-top:10px;"></div>
+
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
                 <button onclick="fermerConfig()">Fermer</button>
             </div>
-        </div>
-    </div>
-
     <script>
         window.historiqueRuches = {{ dernieres_valeurs_dict|tojson|safe }};
     </script>
