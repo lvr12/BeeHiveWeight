@@ -254,7 +254,7 @@ function sauvegarderConfig() {
 window.onclick = function(event) {
     const modal = document.getElementById('configModal');
     if (event.target === modal) {
-        fermerConfiguration();
+        fermerConfig();
     }
 };
 
@@ -289,23 +289,30 @@ function afficherDashboard() {
 
     const mainContainer = document.querySelector('.main');
     mainContainer.innerHTML = `
-        <div id="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h1 style="margin: 0; color: #333;">Dashboard</h1>
-            <button id="edit-dashboard-btn" class="btn btn-primary" onclick="toggleEditMode()">
-                <span id="edit-btn-text"><i class="fas fa-edit"></i> Modifier</span>
-            </button>
-        </div>
-        <div id="dashboard-content">
-            <div id="dashboard-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"></div>
+        <div id="dashboard-header"
+     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0; color: #facc15; font-weight: 700; font-size: 1.8rem;">Dashboard</h1>
+    
+    <button id="edit-dashboard-btn" class="btn-dashboard" onclick="toggleEditMode()">
+        <span id="edit-btn-text"><i class="fas fa-edit"></i> Modifier</span>
+    </button>
+</div>
 
-            <div id="add-card-section" style="display: none; margin-top: 20px; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; text-align: center;">
-                <h3>Ajouter une nouvelle carte</h3>
-                <select id="card-type-select" style="margin: 10px; padding: 8px;">
-                    <option value="">Choisir un ESP</option>
-                </select>
-                <button class="btn btn-primary" onclick="ajouterCarte()" style="margin-left: 10px;">Ajouter</button>
-            </div>
-        </div>
+<div id="dashboard-content">
+    <div id="dashboard-grid"
+         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    </div>
+
+    <div id="add-card-section"
+         style="display: none; margin-top: 20px; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; text-align: center;">
+        <h3 style="color: #facc15;">Ajouter une nouvelle carte</h3>
+        <select id="card-type-select" style="margin: 10px; padding: 8px; border-radius: 6px;">
+            <option value="">Choisir un ESP</option>
+        </select>
+        <button class="btn-dashboard" onclick="ajouterCarte()" style="margin-left: 10px;">Ajouter</button>
+    </div>
+</div>
+
     `;
 
     // Remplir dynamiquement le select avec les ESP existants dans historiqueRuches
@@ -583,48 +590,60 @@ function desactiverDragAndDrop(card) {
     card.removeEventListener('dragstart', handleDragStart);
     card.removeEventListener('dragend', handleDragEnd);
 }
-// ⚡ Active le drop sur les dossiers
-// ⚡ Active le drop sur les dossiers
-function activerDropSurDossier(dossierId) {
-    const dossier = document.getElementById(dossierId);
-    if (!dossier) return;
-
-    // S'assurer que le dossier est visible
-    if (dossier.style.display === 'none') {
-        dossier.style.display = 'block';
-    }
-
-    // Autoriser le dragover
-    dossier.addEventListener('dragover', function(e) {
-        e.preventDefault(); // indispensable pour autoriser le drop
-        dossier.classList.add('dossier-survol');
-    });
-
-    dossier.addEventListener('dragleave', function() {
-        dossier.classList.remove('dossier-survol');
-    });
-
-    dossier.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dossier.classList.remove('dossier-survol');
-        const espId = e.dataTransfer.getData('text/plain');
-        if (espId) {
-            const espElem = document.getElementById(espId + '-title');
-            if (espElem) {
-                dossier.appendChild(espElem);
-            }
-        }
-    });
+function sauvegarderDeplacementESP(espId, nouveauDossier) {
+    let associations = JSON.parse(localStorage.getItem("espDossiers") || "{}");
+    associations[espId] = nouveauDossier;
+    localStorage.setItem("espDossiers", JSON.stringify(associations));
 }
+
+// ⚡ Active le drop sur les dossiers
+
 function handleDragStart(e) {
     e.dataTransfer.setData('text/plain', e.target.id); 
     e.dataTransfer.effectAllowed = 'move'; // permet le déplacement
 }
-function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
+// Quand on arrête de le déplacer
+function handleDragEnd(event) {
+    const allESP = document.querySelectorAll(".dragging");
+    allESP.forEach(el => el.classList.remove("dragging"));
 }
+function activerDropSurDossier(dossierElem) {
+    if (!dossierElem) return;
 
+    dossierElem.addEventListener("dragover", (e) => {
+        e.preventDefault(); // autorise le drop
+        e.dataTransfer.dropEffect = "move"; // change le curseur
+        dossierElem.classList.add("drop-hover");
+    });
 
+    dossierElem.addEventListener("dragleave", () => {
+        dossierElem.classList.remove("drop-hover");
+    });
+
+    dossierElem.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dossierElem.classList.remove("drop-hover");
+
+        const espId = e.dataTransfer.getData("text/plain");
+        const espElem = document.getElementById(espId + "-title");
+
+        if (!espElem) {
+            console.warn("ESP introuvable :", espId);
+            return;
+        }
+
+        // Vérifie si le dossier est bien un conteneur valide
+        const submenu = dossierElem.classList.contains("submenu") ? dossierElem : dossierElem.nextElementSibling;
+
+        if (submenu && submenu.classList.contains("submenu")) {
+            submenu.appendChild(espElem);
+        } else {
+            dossierElem.appendChild(espElem);
+        }
+
+        sauvegarderDeplacementESP(espId, dossierElem.dataset.dossier);
+    });
+}
 function activerDropTousDossiers() {
     const dossiers = document.querySelectorAll('.submenu');
     dossiers.forEach(dossier => {
@@ -1639,13 +1658,14 @@ function allowDrop(ev) {
 let draggedESP = null;
 
 function startDrag(event, espId) {
-    // Déplier le dossier parent
-    const dossier = event.target.closest('.submenu');
-    if (dossier) dossier.style.display = 'block';
+    event.dataTransfer.setData("text/plain", espId);
+    event.dataTransfer.effectAllowed = "move";
 
-    event.dataTransfer.setData('text/plain', espId);
-    event.dataTransfer.effectAllowed = 'move';
+    // Indique visuellement que l’élément est en cours de déplacement
+    const elem = document.getElementById(espId + "-title");
+    if (elem) elem.classList.add("dragging");
 }
+
 
 
 
@@ -2560,6 +2580,10 @@ function afficherTousLesDossiers() {
         creerDossierInterface(nomDossier, ruches);
     });
 }
+document.querySelectorAll(".submenu").forEach(submenu => {
+    activerDropSurDossier(submenu);
+});
+
 function afficherDashboardESP(espId) {
     closeSidebarOnMenuClick();
 
