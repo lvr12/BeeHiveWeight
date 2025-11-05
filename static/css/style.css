@@ -1,5 +1,5 @@
 /* =========================================================
-   DASHBOARD MODERNE — VERSION PREMIUM (corrigée)
+   CSS
    ========================================================= */
 
 * {
@@ -193,7 +193,7 @@ background: linear-gradient(90deg, #f59e0b, #d97706);
 
 .main p {
     font-size: 16px;
-    color: #d1d5db;
+    color: #1c293c;
     line-height: 1.6;
 }
 
@@ -284,7 +284,7 @@ background: linear-gradient(90deg, #f59e0b, #d97706);
 }
 
 .btn-dashboard:hover {
-    transform: translateY(-2px);
+    transform: translateY(-2px);*/
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
 }
 
@@ -305,4 +305,80 @@ button.btn-dashboard::-moz-focus-inner {
     border: 0;
 }
 
+#dashboard-content {
+    background: transparent; /* supprime le blanc */
+    color: #0e5ead;
+}
 
+/* Grille du dashboard */
+#dashboard-grid {
+    background: transparent;
+}
+
+/* Cartes (graphiques, widgets) du dashboard */
+.dashboard-card {
+    
+    border-radius: 12px;
+
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    /*box-shadow: 0 6px 20px rgba(0,0,0,0.4);*/
+}
+#add-card-section {
+    background: #1e293b; 
+    border: 2px dashed #5a1212; 
+    color: #facc15;
+}
+/* === Harmonisation du fond des graphiques === */
+
+/* Fond des conteneurs de graphiques (poids, température, humidité, etc.) */
+.graphique-item,
+.dashboard-card canvas,
+#graphique-poids,
+#graphique-temperature,
+#graphique-humidite,
+[id^="graphique-"],
+[id^="chart-"] {
+    background: #0f172a !important;  /* même couleur que le fond principal */
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Ajuste le texte et titres pour être lisibles sur fond foncé */
+.graphique-item h3,
+.esp-graph-title {
+    color: #a30e0e !important;  /* blanc cassé */
+}
+
+/* Pour le texte du graphique (axes, légendes, etc.) */
+canvas {
+    color: #000000 !important;
+}
+
+/* Optionnel : ajoute un léger effet de relief */
+.graphique-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    transition: all 0.3s ease;
+}
+.graphique-item h3,
+.esp-graph-title {
+    color: #facc15 !important; /* jaune doré pour les titres */
+    font-weight: 600;
+}
+
+/* Texte secondaire (labels, unités, descriptions) */
+#dernier-poids,
+#derniere-valeur,
+#unite-valeur {
+    color: #722e2e !important; /* gris très clair */
+}
+
+/* Légendes et axes des graphiques */
+canvas {
+    color: #12386a !important;
+}

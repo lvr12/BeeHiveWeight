@@ -410,10 +410,10 @@ function creerCarte(cardType, cardData = null) {
 
     const cardHtml = `
         <div id="card-${cardType}" class="dashboard-card" data-size="${size}" data-order="${order}" style="
-            background: white;
+            
             border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            
             position: relative;
             grid-column: span ${getSizeColumns(size)};
             order: ${order};
@@ -437,7 +437,7 @@ function creerCarte(cardType, cardData = null) {
                 display: ${editMode ? 'block' : 'none'};
             ">×</button>
             <div class="resize-handle" style="display: ${editMode ? 'block' : 'none'};"></div>
-            <h3 style="margin-top: 0; color: #333;">${rucherName} - ${typeLabel}</h3>
+            <h3 style="margin-top: 0; color: #facc15;">${rucherName} - ${typeLabel}</h3>
             <canvas id="chart-${cardType}" style="max-height: ${getSizeHeight(size)}px;"></canvas>
         </div>
     `;
@@ -874,7 +874,7 @@ function afficherTousLesGraphiques(rucheId) {
 
     const mainContainer = document.querySelector('.main');
     mainContainer.innerHTML = `
-        <h2 style="color: #333; margin-bottom: 20px;">${rucheId}</h2>
+        <h2 style="color: #ff0000ff; margin-bottom: 20px;">${rucheId}</h2>
         <div id="graph-poids-container">
             <h3>Poids</h3>
             <div id="dernier-poids-container-poids">
