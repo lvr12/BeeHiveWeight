@@ -262,6 +262,17 @@ background: linear-gradient(90deg, #f59e0b, #d97706);
         box-shadow: 0 3px 10px rgba(0,0,0,0.3);
     }
 }
+@media (min-width: 769px) {
+    .sidebar {
+        left: 0 !important; /* sidebar toujours visible */
+        position: relative;
+    }
+
+    .hamburger {
+        display: none !important; /* bouton masqué */
+    }
+}
+
 .btn-dashboard {
     background: linear-gradient(90deg, #111827, #0f172a);
     color: #facc15;
@@ -381,4 +392,18 @@ canvas {
 /* Légendes et axes des graphiques */
 canvas {
     color: #12386a !important;
+}
+
+/* Overlay sombre derrière la sidebar en mobile */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 900;
+}
+
+/* Quand la sidebar est ouverte */
+.sidebar.open + .sidebar-overlay {
+    display: block;
 }
