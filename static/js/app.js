@@ -1643,6 +1643,7 @@ window.addEventListener("DOMContentLoaded", () => {
 function dragESP(ev, espId) {
     draggedESP = espId;
     ev.dataTransfer.setData("text/plain", espId);
+    event.dataTransfer.setData("espId", espId);
 }
 
 
@@ -1679,6 +1680,15 @@ function dropESP(event, dossierId) {
         dossier.appendChild(espElem);
     }
 }
+function dropESPOnFolder(event, nomDossier) {
+    event.preventDefault();
+    const espId = event.dataTransfer.getData("espId");
+
+    if (!espId) return;
+
+    ajouterESPDansDossier(espId, nomDossier);
+}
+
 
 
 
@@ -2049,48 +2059,58 @@ function makeIdSafe(nom) {
 
 // Fonction pour créer un dossier et son submenu dans la sidebar
 // 🔹 Fonction pour créer un dossier et son submenu dans la sidebar
-function creerDossierInterface(nom, ruches = []) {
+function creerDossierInterface(nomDossier, listeESP) {
     const sidebar = document.getElementById("sidebarRuches");
-    if (!sidebar) return;
 
-    const submenuId = makeIdSafe(nom);
-    if (document.getElementById(submenuId)) return;
+    // Créer le header du dossier
+    const dossierDiv = document.createElement("div");
+    dossierDiv.classList.add("menu-item", "dossier-title");
+    dossierDiv.textContent = nomDossier;
+    dossierDiv.onclick = () => toggleDossier(nomDossier);
 
-    // Titre du dossier
-    const divTitle = document.createElement("div");
-    divTitle.className = "menu-item dossier-title";
-    divTitle.textContent = nom;
-    divTitle.onclick = () => toggleDossier(submenuId);
-    sidebar.appendChild(divTitle);
+    // ✅ Zone de drop sur le header du dossier
+    dossierDiv.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dossierDiv.classList.add("drop-over");
+    });
 
-    // Sous-menu
-    const divSubmenu = document.createElement("div");
-    divSubmenu.className = "submenu";
-    divSubmenu.id = submenuId;
-    divSubmenu.style.display = "none";
-    divSubmenu.style.marginLeft = "15px";
-    divSubmenu.ondragover = e => e.preventDefault();
-    divSubmenu.ondrop = e => dropESP(e, nom);
-    sidebar.appendChild(divSubmenu);
+    dossierDiv.addEventListener("dragleave", () => {
+        dossierDiv.classList.remove("drop-over");
+    });
 
-    // ESP
-   ruches.forEach(espId => {
-    const espDiv = document.createElement("div");
-    espDiv.className = "menu-item";
-    espDiv.id = espId + "-title";
-    espDiv.draggable = true;
+    dossierDiv.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dossierDiv.classList.remove("drop-over");
+        const espId = e.dataTransfer.getData("text/plain");
+        ajouterESPDansDossier(espId, nomDossier);
+    });
 
-    // ⚡ Clic pour drag & drop
-    espDiv.ondragstart = e => startDrag(e, espId, nom);
+    sidebar.appendChild(dossierDiv);
 
-    // ⚡ Clic pour afficher les graphiques
-    espDiv.onclick = () => afficherDashboardESP(espId);
+    // Créer le contenu du dossier (ESP)
+    const submenu = document.createElement("div");
+    submenu.classList.add("submenu");
+    submenu.id = nomDossier;
+    submenu.style.display = "none";
 
-    espDiv.textContent = espId;
-    divSubmenu.appendChild(espDiv);
+    listeESP.forEach(esp => {
+        const espDiv = document.createElement("div");
+        espDiv.classList.add("menu-item");
+        espDiv.textContent = esp;
 
-});
+        // Activer drag & drop sur l'ESP
+        espDiv.setAttribute("draggable", "true");
+        espDiv.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", esp);
+        });
+
+        submenu.appendChild(espDiv);
+    });
+
+    sidebar.appendChild(submenu);
 }
+
+
 
 
 
@@ -2636,6 +2656,63 @@ window.addEventListener('load', () => {
     const esps = document.querySelectorAll('.menu-item[id$="-title"]');
     esps.forEach(esp => activerDragAndDrop(esp));
 });
+function ajouterESPDansDossier(espId, nomDossier) {
+
+    console.log(`🔄 Déplacement de l'ESP "${espId}" vers "${nomDossier}"`);
+
+    // 1. Retirer ESP de l'ancien dossier dans le DOM
+    const ancienEspDiv = document.querySelector(`[data-esp-id="${espId}"]`);
+    if (ancienEspDiv) {
+        const oldParent = ancienEspDiv.parentElement;
+        oldParent.removeChild(ancienEspDiv);
+    }
+
+    // 2. Retirer ESP de l'ancien dossier dans localStorage
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith("dossier_")) {
+            let liste = JSON.parse(localStorage.getItem(key));
+            if (Array.isArray(liste)) {
+                const idx = liste.indexOf(espId);
+                if (idx !== -1) {
+                    liste.splice(idx, 1);
+                    localStorage.setItem(key, JSON.stringify(liste));
+                }
+            }
+        }
+    });
+
+    // 3. Ajouter l'ESP dans le nouveau dossier dans localStorage
+    const lsKey = "dossier_" + nomDossier;
+    let listeNew = JSON.parse(localStorage.getItem(lsKey)) || [];
+
+    if (!listeNew.includes(espId)) {
+        listeNew.push(espId);
+        localStorage.setItem(lsKey, JSON.stringify(listeNew));
+    }
+
+    // 4. Ajouter dans le DOM
+    const submenu = document.getElementById(nomDossier);
+
+    const newDiv = document.createElement("div");
+    newDiv.classList.add("menu-item");
+    newDiv.setAttribute("data-esp-id", espId);
+    newDiv.setAttribute("draggable", "true");
+
+    newDiv.innerHTML = `
+        <span class="iconify" data-icon="mdi:beehive-outline"></span> ${espId}
+    `;
+
+    newDiv.addEventListener("dragstart", (e) => dragESP(e, espId));
+    newDiv.addEventListener("click", () => afficherDashboardESP(espId));
+
+    submenu.appendChild(newDiv);
+
+    console.log("✅ ESP déplacé avec succès !");
+}
+
+
+
+
 
 waitForBackendThenReconstruct();
 // Appel au chargement de la page

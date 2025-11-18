@@ -19,9 +19,15 @@
 </head>
 
 <body>
-    <button class="hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <!-- Bouton hamburger -->
+    <button class="hamburger" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Overlay pour fermer la sidebar sur mobile -->
     <div class="sidebar-overlay" onclick="closeSidebar()"></div>
 
+    <!-- SIDEBAR -->
     <div class="sidebar">
         <h2>Ruchers</h2>
 
@@ -31,22 +37,34 @@
 
         <div id="sidebarRuches">
             {% for dossier, ruches in dossiers_dict.items() %}
-            <div class="menu-item dossier-title" onclick="toggleDossier('{{ dossier }}')">
+            
+            <!-- NOM DU DOSSIER (DROP POSSIBLE ICI) -->
+            <div class="menu-item dossier-title"
+                 data-dossier="{{ dossier }}"
+                 onclick="toggleDossier('{{ dossier }}')"
+                 ondragover="event.preventDefault()"
+                 ondrop="dropESPOnFolder(event, '{{ dossier }}')">
                 <i class="fas fa-folder"></i> {{ dossier }}
             </div>
 
+            <!-- LISTE DES ESP DU DOSSIER -->
             <div class="submenu" id="{{ dossier }}" style="display:none; margin-left:15px;">
                 {% for ruche in ruches %}
-                    <div class="menu-item" onclick="afficherDashboardESP('{{ ruche }}')">
+                    <div class="menu-item"
+                         data-esp-id="{{ ruche }}"
+                         draggable="true"
+                         ondragstart="dragESP(event, '{{ ruche }}')"
+                         onclick="afficherDashboardESP('{{ ruche }}')">
                         <span class="iconify" data-icon="mdi:beehive-outline"></span> {{ ruche }}
                     </div>
                 {% endfor %}
             </div>
+
             {% endfor %}
         </div>
-
-       <!-- <button id="settingsBtn" class="config-button" onclick="ouvrirParam()">⚙ Paramètres</button>-->
     </div>
+
+
 
     <!-- Zone principale -->
     <div class="main" id="main-content">
