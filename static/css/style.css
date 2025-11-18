@@ -295,7 +295,7 @@ background: linear-gradient(90deg, #f59e0b, #d97706);
 }
 
 .btn-dashboard:hover {
-    transform: translateY(-2px);*/
+    transform: translateY(-2px);
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
 }
 
@@ -406,4 +406,5 @@ canvas {
 /* Quand la sidebar est ouverte */
 .sidebar.open + .sidebar-overlay {
     display: block;
+
 }
